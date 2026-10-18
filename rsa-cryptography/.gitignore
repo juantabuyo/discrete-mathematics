@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.env.*
+!.env.example
+.DS_Store
+__MACOSX/
+._*
+keys/
+priv_*.txt
+pub_*.txt
+.ruff_cache/

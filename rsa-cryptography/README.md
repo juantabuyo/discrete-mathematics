@@ -1,6 +1,6 @@
 # RSA cryptography
 
-We used the modular arithmetic library from our first assignment to implement RSA in a two-person Discrete Mathematics project. It covers key generation, Unicode encoding, encryption, decryption and decimal padding. Two attacks show how small moduli can be factored and how unpadded character ciphertexts can be matched using a public key.
+An educational RSA implementation built on the companion modular arithmetic library. It covers key generation, Unicode encoding, encryption, decryption and decimal padding. Two attacks show how small moduli can be factored and how unpadded character ciphertexts can be matched using a public key.
 
 The registration and chat scripts exchange messages locally: ciphertext integers are copied between terminals. There is no network connection or messaging service.
 
@@ -46,4 +46,6 @@ Tests cover key generation, padding, Unicode, both attacks and a complete local 
 
 This is educational textbook RSA, not secure encryption. It uses Python's `random`, per-character encryption, decimal padding rather than OAEP, and plaintext private-key files. Encryption rejects characters whose full padding range cannot fit below the modulus. Prime enumeration and trial division are intended for small examples.
 
-The team implemented the algorithms and local scripts from coursework interfaces. Course tests are retained with English names. A local `modular.py` keeps the project independently runnable. Post-submission fixes cover key selection, padding, key recovery and file handling; the interface is now in English.
+## Academic context and credits
+
+This was a two-person Discrete Mathematics coursework project at ICAI. The team implemented the algorithms and local scripts from coursework interfaces. Course tests are retained with English names. A local `modular.py` keeps the project independently runnable. Post-submission fixes cover key selection, padding, key recovery and file handling; the interface is now in English.

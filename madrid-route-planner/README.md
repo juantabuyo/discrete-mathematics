@@ -1,8 +1,12 @@
 # Madrid route planner
 
-We built this route planner as a two-person Discrete Mathematics project. It looks up Madrid addresses, maps them to a street graph and uses our Dijkstra implementation to find a route. The graph module also implements Prim and Kruskal for minimum spanning forests.
+A Python route planner that maps Madrid addresses to a street graph and finds paths with a custom Dijkstra implementation. Distance, estimated travel time and a simple junction-delay model produce different routes. The graph module also implements Prim and Kruskal for minimum spanning forests.
 
 NetworkX provides graph containers. OSMnx downloads and converts street networks and locates the nearest nodes. The shortest-path and spanning-tree algorithms are in [weighted_graph.py](weighted_graph.py).
+
+![Dijkstra selects routes of 200 metres, 19.2 seconds and 46.5 seconds for the three synthetic cost models](docs/images/route-comparison.png)
+
+Three routes computed by the project's Dijkstra implementation on the same synthetic network. The roads and coordinates are invented; the highlighted paths and costs come from the code.
 
 ## Install and run
 
@@ -16,6 +20,14 @@ python demo.py
 ```
 
 On Windows, activate with `.venv\Scripts\activate`. The demo uses four invented nodes and artificial road lengths and speeds. It runs the routing and OSMnx functions without downloaded data, then saves `output/demo-route.png`. Re-running it replaces that image.
+
+To regenerate the comparison above with the same installed dependencies:
+
+```bash
+python preview.py
+```
+
+It saves `docs/images/route-comparison.png`.
 
 | Cost | Route | Total |
 | --- | --- | --- |
@@ -47,5 +59,9 @@ Tests compare paths and spanning forests with NetworkX and cover disconnected gr
 Travel time assumes speed-limit travel. The third cost adds the assignment's expected 24 seconds per edge; it does not use live traffic. Parallel roads are reduced to the shortest edge before all searches, so time-based routes are optimal only within that reduced graph. Turn instructions use approximate coordinate geometry.
 
 The full Madrid CSV and a city-wide journey have not been tested here. The data notes describe the expected format, sources and model assumptions.
+
+## Academic context and credits
+
+This was a two-person Discrete Mathematics coursework project at ICAI. The algorithms and routing logic are the team's implementation; libraries provide graph containers, data access and plotting.
 
 The project follows the coursework algorithms. Post-submission fixes cover unreachable destinations, short routes, address particles, terminal exit and the infinity sentinel used for large weights. Code and interfaces are now in English.

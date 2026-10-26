@@ -1,6 +1,6 @@
 # Modular arithmetic
 
-We built a number-theory library and a command-line calculator for a two-person Discrete Mathematics assignment. The library covers prime testing, a sieve, factorisation, Euclidean algorithms, modular powers and inverses, Euler's totient, congruences and square roots.
+A number-theory library and command-line calculator in Python. It covers prime testing, a sieve, factorisation, Euclidean algorithms, modular powers and inverses, Euler's totient, congruences and square roots.
 
 `modular.py` contains the algorithms. `calculator.py` runs commands interactively or from a file. The congruence solver allows non-coprime moduli; square roots use Tonelli–Shanks for odd primes.
 
@@ -57,4 +57,6 @@ Tests compare results with enumeration and Python's integer arithmetic, includin
 - Root and quadratic routines require prime moduli. The quadratic interface returns at most two roots, so it rejects an equation solved by every residue when the modulus exceeds two.
 - Trial division and the sieve are intended for small inputs, not cryptographic-size integers.
 
-Course interfaces and test cases provided the starting point. Post-submission changes corrected boundary cases and parsing, protected batch input from accidental overwriting, and translated the interface to English.
+## Academic context and credits
+
+This was a two-person Discrete Mathematics coursework project at ICAI. Course interfaces and test cases provided the starting point. Post-submission changes corrected boundary cases and parsing, protected batch input from accidental overwriting, and translated the interface to English.

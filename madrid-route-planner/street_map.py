@@ -53,7 +53,13 @@ def dms_to_decimal(coord: str) -> float:
 
     degrees, minutes, seconds, hemisphere = match.groups()
     degrees, minutes, seconds = float(degrees), float(minutes), float(seconds)
+    if minutes >= 60 or seconds >= 60:
+        raise ValueError(f"Minutes and seconds must be below 60 in {coord!r}.")
     dec = degrees + minutes / 60 + seconds / 3600
+    if dec > (90 if hemisphere in {"N", "S"} else 180):
+        raise ValueError(
+            f"Latitude must not exceed 90 degrees and longitude 180 degrees in {coord!r}."
+        )
 
     if hemisphere in {"S", "W"}:
         dec = -dec
@@ -78,6 +84,15 @@ def load_addresses() -> pd.DataFrame:
     return df
 
 
+def _text(column: pd.Series) -> pd.Series:
+    """Return a column as text with missing values empty.
+
+    A directory column that is empty in every row is read as float64; filling that
+    with a string is deprecated in pandas, so the values are converted first.
+    """
+    return column.astype(object).where(column.notna(), "")
+
+
 def find_address(address: str, street_map: pd.DataFrame) -> Tuple[float, float]:
     """Return latitude and longitude for ``street type and name, number``.
 
@@ -95,11 +110,11 @@ def find_address(address: str, street_map: pd.DataFrame) -> Tuple[float, float]:
     # valid names such as Calle Mayor and Calle de la Palma.
     names = (
         (
-            street_map["VIA_CLASE"].fillna("")
+            _text(street_map["VIA_CLASE"])
             + " "
-            + street_map["VIA_PAR"].fillna("")
+            + _text(street_map["VIA_PAR"])
             + " "
-            + street_map["VIA_NOMBRE"].fillna("")
+            + _text(street_map["VIA_NOMBRE"])
         )
         .str.upper()
         .str.replace(r"\s+", " ", regex=True)
@@ -136,13 +151,27 @@ def load_graph() -> nx.MultiDiGraph:
     return G_multi
 
 
-def simplify_graph(multigraph: nx.MultiDiGraph) -> nx.DiGraph:
-    """Keep the shortest parallel edge and remove self-loops.
+def simplify_graph(multigraph: nx.MultiDiGraph, edge_cost=None) -> nx.DiGraph:
+    """Keep one edge between each ordered pair of nodes and remove self-loops.
 
-    The same simplified graph is used for all cost functions. Consequently,
-    a longer parallel edge that would be faster is not considered.
+    By default the shortest parallel edge is kept. With ``edge_cost``, a function
+    of an edge's attribute dictionary, the cheapest parallel edge under that cost
+    is kept instead, so a longer but faster road is not discarded when searching
+    for the shortest travel time. A graph simplified for one cost is not
+    guaranteed to contain the best edges for another.
     """
-    G = ox.convert.to_digraph(multigraph)
+    if edge_cost is None:
+        G = ox.convert.to_digraph(multigraph)
+    else:
+        G = nx.DiGraph()
+        G.add_nodes_from(multigraph.nodes(data=True))
+        G.graph.update(multigraph.graph)
+        best = {}
+        for u, v, data in multigraph.edges(data=True):
+            cost = edge_cost(data)
+            if (u, v) not in best or cost < best[(u, v)][0]:
+                best[(u, v)] = (cost, data)
+        G.add_edges_from((u, v, dict(data)) for (u, v), (_, data) in best.items())
     G.remove_edges_from(nx.selfloop_edges(G))
     return G
 

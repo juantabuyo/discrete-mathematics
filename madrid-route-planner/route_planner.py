@@ -48,8 +48,17 @@ def choose_cost() -> str:
             print(e)
 
 
+# Speed units of the OpenStreetMap ``maxspeed`` tag, in km/h; no unit means km/h.
+KMH_PER_UNIT = {"": 1.0, "km/h": 1.0, "kmh": 1.0, "kph": 1.0, "mph": 1.609344, "knots": 1.852}
+
+
 def parse_speed(speed: Any) -> float | None:
-    """Read a speed in km/h, taking the first value when given a list."""
+    """Read a speed in km/h, taking the first value when given a list.
+
+    A text value is read from its first number, with the unit written right after
+    it: km/h (the default), mph or knots. A value with another unit, or without a
+    number, gives None so that the road-type table applies instead of a guess.
+    """
     if speed is None:
         return None
     if isinstance(speed, list):
@@ -59,14 +68,14 @@ def parse_speed(speed: Any) -> float | None:
     if isinstance(speed, (int, float)):
         return float(speed)
     if isinstance(speed, str):
-        m = re.search(r"\d+", speed)
-        if m:
-            return float(m.group())
+        m = re.search(r"(\d+(?:\.\d+)?)\s*([A-Za-z/]*)", speed)
+        if m and m.group(2).lower() in KMH_PER_UNIT:
+            return float(m.group(1)) * KMH_PER_UNIT[m.group(2).lower()]
     return None
 
 
-def edge_speed(G: nx.DiGraph, u: int, v: int) -> float:
-    data = G[u][v]
+def speed_from_data(data: dict) -> float:
+    """Speed in km/h for an edge's attributes: the tag, the road-type table or 50."""
     speed_kmh = parse_speed(data.get("maxspeed"))
     if speed_kmh is not None:
         return speed_kmh
@@ -76,6 +85,19 @@ def edge_speed(G: nx.DiGraph, u: int, v: int) -> float:
     if road_type in street_map.MAX_SPEEDS:
         return float(street_map.MAX_SPEEDS[road_type])
     return 50.0
+
+
+def travel_time_from_data(data: dict) -> float:
+    """Estimate seconds at the speed limit, without congestion or acceleration."""
+    distance = float(data.get("length", 0.0))
+    speed_ms = speed_from_data(data) * 1000 / 3600
+    if speed_ms <= 0:
+        return float("inf")
+    return distance / speed_ms
+
+
+def edge_speed(G: nx.DiGraph, u: int, v: int) -> float:
+    return speed_from_data(G[u][v])
 
 
 def distance_cost(G: nx.DiGraph, u: int, v: int) -> float:
@@ -97,13 +119,7 @@ def junction_cost(G: nx.DiGraph, u: int, v: int) -> float:
 
 def edge_travel_time(G: nx.DiGraph, u: int, v: int) -> float:
     """Estimate seconds at the speed limit, without congestion or acceleration."""
-    data = G[u][v]
-    distance = float(data.get("length", 0.0))
-    speed_kmh = edge_speed(G, u, v)
-    speed_ms = speed_kmh * 1000 / 3600
-    if speed_ms <= 0:
-        return float("inf")
-    return distance / speed_ms
+    return travel_time_from_data(G[u][v])
 
 
 def street_name(G: nx.DiGraph, u: int, v: int) -> str:
@@ -194,7 +210,10 @@ def navigation_instructions(G: nx.DiGraph, route_nodes: list[int] | None) -> lis
 if __name__ == "__main__":
     addresses = street_map.load_addresses()
     G_multi = street_map.load_graph()
-    G = street_map.simplify_graph(G_multi)
+    # Distance keeps the shortest parallel edge; both time costs keep the fastest one
+    # (the junction delay is the same constant on every edge).
+    G_distance = street_map.simplify_graph(G_multi)
+    G_time = street_map.simplify_graph(G_multi, travel_time_from_data)
 
     while True:
         origin_lat, origin_lon = prompt_address(addresses, "origin")
@@ -206,8 +225,8 @@ if __name__ == "__main__":
             print("No destination entered. Exiting.")
             sys.exit(0)
 
-        origin_node = ox.nearest_nodes(G, origin_lon, origin_lat)
-        destination_node = ox.nearest_nodes(G, destination_lon, destination_lat)
+        origin_node = ox.nearest_nodes(G_distance, origin_lon, origin_lat)
+        destination_node = ox.nearest_nodes(G_distance, destination_lon, destination_lat)
 
         mode = choose_cost()
 
@@ -215,13 +234,14 @@ if __name__ == "__main__":
             print("Exiting.")
             sys.exit(0)
         elif mode == "1":
-            route = gp.shortest_path(G, distance_cost, origin_node, destination_node)
+            G, cost = G_distance, distance_cost
         elif mode == "2":
-            route = gp.shortest_path(G, time_cost, origin_node, destination_node)
+            G, cost = G_time, time_cost
         elif mode == "3":
-            route = gp.shortest_path(G, junction_cost, origin_node, destination_node)
+            G, cost = G_time, junction_cost
         else:
             sys.exit(1)
+        route = gp.shortest_path(G, cost, origin_node, destination_node)
 
         instructions = navigation_instructions(G, route)
         print("\nNavigation instructions:")
